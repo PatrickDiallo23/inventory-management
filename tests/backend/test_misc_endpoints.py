@@ -83,6 +83,19 @@ class TestDemandEndpoints:
                 assert item["trend"].lower() == "stable", \
                     f"New item {item['item_name']} should have stable trend"
 
+    def test_demand_forecast_has_cost_and_lead_time_fields(self, client):
+        """Test that demand forecasts include unit_cost and lead_time_days for restocking."""
+        response = client.get("/api/demand")
+        data = response.json()
+
+        for forecast in data:
+            assert "unit_cost" in forecast
+            assert isinstance(forecast["unit_cost"], (int, float))
+            assert forecast["unit_cost"] > 0
+            assert "lead_time_days" in forecast
+            assert isinstance(forecast["lead_time_days"], int)
+            assert forecast["lead_time_days"] > 0
+
 
 class TestBacklogEndpoints:
     """Test suite for backlog endpoints."""
