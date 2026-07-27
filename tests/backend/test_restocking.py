@@ -80,3 +80,58 @@ class TestRestockingRecommendations:
         for item in data["items"]:
             expected = round(item["recommended_quantity"] * item["unit_cost"], 2)
             assert abs(item["line_total"] - expected) < 0.01
+
+
+class TestRestockingOrders:
+    """Test suite for POST/GET /api/restocking/orders."""
+
+    def test_create_order_success(self, client):
+        """Test submitting a restocking order with valid items."""
+        payload = {
+            "budget": 5000,
+            "items": [
+                {"item_sku": "GSK-203", "item_name": "High-Temperature Gasket", "quantity": 100, "unit_cost": 5.0},
+                {"item_sku": "FLT-405", "item_name": "Oil Filter Cartridge", "quantity": 50, "unit_cost": 5.0}
+            ]
+        }
+        response = client.post("/api/restocking/orders", json=payload)
+        assert response.status_code == 200
+
+        order = response.json()
+        assert order["order_number"].startswith("PO-2026-")
+        assert order["total_cost"] == 100 * 5.0 + 50 * 5.0
+        assert order["status"] == "Submitted"
+        assert order["lead_time_days"] == max(7, 5)  # GSK-203 lead=7, FLT-405 lead=5
+        assert "T" in order["created_date"]
+        assert "T" in order["expected_delivery"]
+        assert len(order["items"]) == 2
+
+    def test_create_order_empty_items_returns_400(self, client):
+        """Test that submitting an order with no items is rejected."""
+        response = client.post("/api/restocking/orders", json={"budget": 1000, "items": []})
+        assert response.status_code == 400
+
+    def test_create_order_non_positive_quantity_returns_400(self, client):
+        """Test that a zero or negative quantity is rejected."""
+        payload = {
+            "budget": 1000,
+            "items": [{"item_sku": "GSK-203", "item_name": "High-Temperature Gasket", "quantity": 0, "unit_cost": 5.0}]
+        }
+        response = client.post("/api/restocking/orders", json=payload)
+        assert response.status_code == 400
+
+    def test_submitted_order_appears_in_list(self, client):
+        """Test that a submitted order shows up in GET /api/restocking/orders."""
+        payload = {
+            "budget": 1000,
+            "items": [{"item_sku": "VLV-506", "item_name": "Pressure Relief Valve", "quantity": 10, "unit_cost": 35.0}]
+        }
+        create_response = client.post("/api/restocking/orders", json=payload)
+        created_order = create_response.json()
+
+        list_response = client.get("/api/restocking/orders")
+        assert list_response.status_code == 200
+
+        orders = list_response.json()
+        order_numbers = [o["order_number"] for o in orders]
+        assert created_order["order_number"] in order_numbers

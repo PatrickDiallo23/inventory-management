@@ -125,6 +125,36 @@ class CreatePurchaseOrderRequest(BaseModel):
     expected_delivery_date: str
     notes: Optional[str] = None
 
+class RestockingOrderItemRequest(BaseModel):
+    item_sku: str
+    item_name: str
+    quantity: int
+    unit_cost: float
+
+
+class CreateRestockingOrderRequest(BaseModel):
+    budget: int
+    items: List[RestockingOrderItemRequest]
+
+
+class RestockingOrderItem(BaseModel):
+    item_sku: str
+    item_name: str
+    quantity: int
+    unit_cost: float
+    line_total: float
+
+
+class RestockingOrder(BaseModel):
+    id: str
+    order_number: str
+    items: List[RestockingOrderItem]
+    total_cost: float
+    lead_time_days: int
+    created_date: str
+    expected_delivery: str
+    status: str
+
 # Restocking engine (business logic, not a model)
 TREND_PRIORITY = {'increasing': 0, 'stable': 1, 'decreasing': 2}
 
@@ -253,6 +283,57 @@ def get_restocking_recommendations(budget: int = 0):
     if budget < 0:
         raise HTTPException(status_code=400, detail="budget must be non-negative")
     return compute_restocking_recommendations(budget)
+
+submitted_restocking_orders: List[dict] = []
+
+
+@app.post("/api/restocking/orders", response_model=RestockingOrder)
+def create_restocking_order(request: CreateRestockingOrderRequest):
+    """Submit a restocking purchase order built from recommended items."""
+    if not request.items:
+        raise HTTPException(status_code=400, detail="items cannot be empty")
+    if any(item.quantity <= 0 for item in request.items):
+        raise HTTPException(status_code=400, detail="all item quantities must be positive")
+
+    order_items = []
+    for item in request.items:
+        line_total = round(item.quantity * item.unit_cost, 2)
+        order_items.append({
+            'item_sku': item.item_sku,
+            'item_name': item.item_name,
+            'quantity': item.quantity,
+            'unit_cost': item.unit_cost,
+            'line_total': line_total
+        })
+
+    total_cost = round(sum(i['line_total'] for i in order_items), 2)
+
+    ordered_skus = {item.item_sku for item in request.items}
+    lead_times = [f['lead_time_days'] for f in demand_forecasts if f['item_sku'] in ordered_skus]
+    lead_time_days = max(lead_times) if lead_times else 0
+
+    created_date = datetime.now()
+    expected_delivery = created_date + timedelta(days=lead_time_days)
+    date_format = "%Y-%m-%dT%H:%M:%S"
+
+    order = {
+        'id': str(len(submitted_restocking_orders) + 1),
+        'order_number': f"PO-2026-{len(submitted_restocking_orders) + 1:04d}",
+        'items': order_items,
+        'total_cost': total_cost,
+        'lead_time_days': lead_time_days,
+        'created_date': created_date.strftime(date_format),
+        'expected_delivery': expected_delivery.strftime(date_format),
+        'status': 'Submitted'
+    }
+    submitted_restocking_orders.append(order)
+    return order
+
+
+@app.get("/api/restocking/orders", response_model=List[RestockingOrder])
+def get_restocking_orders():
+    """List all submitted restocking orders."""
+    return submitted_restocking_orders
 
 @app.get("/api/backlog", response_model=List[BacklogItem])
 def get_backlog():
