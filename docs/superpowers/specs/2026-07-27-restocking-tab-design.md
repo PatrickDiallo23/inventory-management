@@ -13,19 +13,21 @@ The demand forecast (`server/data/demand_forecasts.json`, 9 items) currently has
 
 ## Data Changes
 
-`server/data/demand_forecasts.json` gains two fields per item (mock values, illustrative of realistic cost/lead-time ranges):
+`server/data/demand_forecasts.json` gains two fields per item (mock values, calibrated so that fully restocking every item's forecasted demand costs ~$44,655 total — comfortably under the $50,000 slider max, matching the rationale for that range):
 
-| SKU | unit_cost | lead_time_days |
-|---|---|---|
-| WDG-001 | 45.00 | 10 |
-| BRG-102 | 18.00 | 14 |
-| GSK-203 | 6.00 | 7 |
-| MTR-304 | 320.00 | 21 |
-| FLT-405 | 9.00 | 5 |
-| VLV-506 | 65.00 | 12 |
-| PSU-501 | 22.00 | 9 |
-| SNR-420 | 38.00 | 15 |
-| CTL-330 | 85.00 | 18 |
+| SKU | unit_cost | lead_time_days | forecasted_demand | full-fund cost |
+|---|---|---|---|---|
+| WDG-001 | 20.00 | 10 | 450 | 9,000 |
+| BRG-102 | 15.00 | 14 | 152 | 2,280 |
+| GSK-203 | 5.00 | 7 | 600 | 3,000 |
+| MTR-304 | 200.00 | 21 | 35 | 7,000 |
+| FLT-405 | 5.00 | 5 | 950 | 4,750 |
+| VLV-506 | 35.00 | 12 | 121 | 4,235 |
+| PSU-501 | 20.00 | 9 | 252 | 5,040 |
+| SNR-420 | 25.00 | 15 | 182 | 4,550 |
+| CTL-330 | 50.00 | 18 | 96 | 4,800 |
+
+**Total full-fund cost: $44,655** — the $50,000 max leaves ~$5,345 of headroom, so the top of the slider funds every recommendation in full.
 
 `DemandForecast` Pydantic model in `server/main.py` gains matching `unit_cost: float` and `lead_time_days: int` fields.
 
