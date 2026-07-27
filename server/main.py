@@ -95,7 +95,37 @@ class DemandForecast(BaseModel):
     unit_cost: float
     lead_time_days: int
 
-# Restocking recommendation engine
+class BacklogItem(BaseModel):
+    id: str
+    order_id: str
+    item_sku: str
+    item_name: str
+    quantity_needed: int
+    quantity_available: int
+    days_delayed: int
+    priority: str
+    has_purchase_order: Optional[bool] = False
+
+class PurchaseOrder(BaseModel):
+    id: str
+    backlog_item_id: str
+    supplier_name: str
+    quantity: int
+    unit_cost: float
+    expected_delivery_date: str
+    status: str
+    created_date: str
+    notes: Optional[str] = None
+
+class CreatePurchaseOrderRequest(BaseModel):
+    backlog_item_id: str
+    supplier_name: str
+    quantity: int
+    unit_cost: float
+    expected_delivery_date: str
+    notes: Optional[str] = None
+
+# Restocking engine (business logic, not a model)
 TREND_PRIORITY = {'increasing': 0, 'stable': 1, 'decreasing': 2}
 
 
@@ -170,36 +200,6 @@ def compute_restocking_recommendations(budget: int) -> dict:
         'total_cost': total_cost,
         'remaining_budget': remaining_budget
     }
-
-class BacklogItem(BaseModel):
-    id: str
-    order_id: str
-    item_sku: str
-    item_name: str
-    quantity_needed: int
-    quantity_available: int
-    days_delayed: int
-    priority: str
-    has_purchase_order: Optional[bool] = False
-
-class PurchaseOrder(BaseModel):
-    id: str
-    backlog_item_id: str
-    supplier_name: str
-    quantity: int
-    unit_cost: float
-    expected_delivery_date: str
-    status: str
-    created_date: str
-    notes: Optional[str] = None
-
-class CreatePurchaseOrderRequest(BaseModel):
-    backlog_item_id: str
-    supplier_name: str
-    quantity: int
-    unit_cost: float
-    expected_delivery_date: str
-    notes: Optional[str] = None
 
 # API endpoints
 @app.get("/")
