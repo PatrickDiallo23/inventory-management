@@ -472,7 +472,7 @@ class TestRestockingOrders:
         assert response.status_code == 200
 
         order = response.json()
-        assert order["order_number"].startswith("PO-2025-")
+        assert order["order_number"].startswith("PO-2026-")
         assert order["total_cost"] == 100 * 5.0 + 50 * 5.0
         assert order["status"] == "Submitted"
         assert order["lead_time_days"] == max(7, 5)  # GSK-203 lead=7, FLT-405 lead=5
@@ -591,7 +591,7 @@ def create_restocking_order(request: CreateRestockingOrderRequest):
 
     order = {
         'id': str(len(submitted_restocking_orders) + 1),
-        'order_number': f"PO-2025-{len(submitted_restocking_orders) + 1:04d}",
+        'order_number': f"PO-2026-{len(submitted_restocking_orders) + 1:04d}",
         'items': order_items,
         'total_cost': total_cost,
         'lead_time_days': lead_time_days,
